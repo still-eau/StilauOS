@@ -120,6 +120,7 @@ static void print_vector_hex(int vector)
 
 static void cmd_help(int argc, char **argv);
 static void cmd_clear(int argc, char **argv);
+static void cmd_fastfetch(int argc, char **argv);
 static void cmd_ticks(int argc, char **argv);
 static void cmd_pmm_mem(int argc, char **argv);
 static void cmd_kmalloc(int argc, char **argv);
@@ -147,6 +148,7 @@ static void cmd_kill_thread(int argc, char **argv);
 static shell_cmd_t g_commands[] = {
     {"help",       "Show this help menu",            cmd_help},
     {"clear",      "Clear the screen",               cmd_clear},
+    {"fastfetch",  "Show system info",               cmd_fastfetch},
     {"ticks",      "Show PIT tick counter",          cmd_ticks},
     {"pmm_mem",    "Show physical memory usage",     cmd_pmm_mem},
     {"kmalloc",    "Test page and heap allocators",  cmd_kmalloc},
@@ -188,6 +190,34 @@ static void cmd_clear(int argc, char **argv)
     (void)argc; (void)argv;
     kconsole_clear();
     kconsole_banner(" Kernel Shell ");
+}
+
+static void cmd_fastfetch(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    kconsole_clear();
+    kconsole_banner(" Kernel Shell ");
+
+    // Print Memory Info
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintln("Memory (RAM)");
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    kprintf("  Total:  %d MB\n", ((pmm_get_total_pages()) * PAGE_SIZE) / 1024 / 1024);
+    kprintf("  Free:   %d MB\n", (pmm_get_free_pages() * PAGE_SIZE) / 1024 / 1024);
+    kprintf("  Used:   %d MB\n", (pmm_get_used_pages() * PAGE_SIZE) / 1024 / 1024);
+
+    // Print Uptime
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintln("Uptime");
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    kprintf("  Current Tick: %d\n", (unsigned int)pit_get_ticks());
+
+    // Print OS Info
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    kprintln("OS");
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    kprintf("  Kernel: StilauOS\n");
+    kprintf("  Version: 0.1\n");
 }
  
 static void cmd_ticks(int argc, char **argv)
