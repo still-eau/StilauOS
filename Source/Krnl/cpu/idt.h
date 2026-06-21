@@ -66,6 +66,8 @@ extern void isr_machine_check(void);
 extern void isr_simd_fpu(void);
 extern void isr_virtualization(void);
 extern void isr_security(void);
+extern void isr_fs(void);
+extern void isr_scheduler(void);
 
 // IRQ stubs (installed by irq_install in pic.c)
 extern void irq0(void);   // PIT timer

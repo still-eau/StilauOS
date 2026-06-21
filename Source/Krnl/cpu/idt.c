@@ -144,6 +144,10 @@ void idt_init(void)
     // [21-29] Reserved
     // [30] #SX  Security Exception
     idt_encode_entry(30, isr_security,           IDT_KERNEL_CS, IDT_GATE_TRAP);
+    // [31] #FS  File System Fault
+    idt_encode_entry(31, isr_fs, IDT_KERNEL_CS, IDT_GATE_INTERRUPT);
+    // [32] #SCHED  Scheduler Fault
+    idt_encode_entry(32, isr_scheduler, IDT_KERNEL_CS, IDT_GATE_INTERRUPT);
 
     // Hardware IRQs [32-47] are installed by pic_init() + irq_install()
     // (see drivers/pic.c). We leave the default handler for now.

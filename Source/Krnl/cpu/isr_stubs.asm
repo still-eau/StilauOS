@@ -123,6 +123,8 @@ ISR_NO_ERR  isr_bound_range,    isr_bound_range_handler
 ISR_NO_ERR  isr_invalid_opcode, isr_invalid_opcode_handler
 ISR_NO_ERR  isr_device_na,      isr_device_na_handler
 ISR_ERR     isr_double_fault,   isr_double_fault_handler
+ISR_NO_ERR  isr_scheduler,      isr_scheduler_handler
+ISR_NO_ERR  isr_fs,             isr_fs_handler
 ISR_NO_ERR  isr_default,        isr_default_handler
 ISR_ERR     isr_invalid_tss,    isr_invalid_tss_handler
 ISR_ERR     isr_segment_np,     isr_segment_np_handler

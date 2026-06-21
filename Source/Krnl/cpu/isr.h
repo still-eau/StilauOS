@@ -27,6 +27,8 @@ void isr_machine_check_handler(void);
 void isr_simd_fpu_handler(void);
 void isr_virtualization_handler(void);
 void isr_security_handler(uint64_t error_code);
+void isr_scheduler_handler(void);
+void isr_fs_handler(void);
 
 // IRQ C-level handlers
 void irq0_handler(void);   // PIT timer

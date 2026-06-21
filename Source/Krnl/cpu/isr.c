@@ -222,3 +222,13 @@ void isr_security_handler(uint64_t error_code)
     (void)error_code;
     panic(30, "#SX", "Security Exception");
 }
+
+void isr_scheduler_handler(void)
+{
+    panic(31, "#SCHED", "Scheduler fault");
+}
+
+void isr_fs_handler(void)
+{
+    panic(32, "#FS", "Filesystem fault");
+}
