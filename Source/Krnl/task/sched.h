@@ -24,7 +24,7 @@
 // Scheduler tunables
 // ---------------------------------------------------------------------------
 
-#define SCHED_MAX_THREADS    32       // Maximum simultaneous threads
+#define SCHED_MAX_THREADS    128       // Maximum simultaneous threads
 #define SCHED_STACK_PAGES     4       // Pages per thread kernel stack (4 * 4096 = 16 KB)
 #define SCHED_TIME_SLICE     10       // Default ticks per thread quantum (10 ms at 1000 Hz)
 #define SCHED_THREAD_NAME_MAX 32      // Max characters in a thread name
