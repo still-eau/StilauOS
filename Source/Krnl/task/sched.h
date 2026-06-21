@@ -116,4 +116,7 @@ uint64_t yield_handler(uint64_t current_rsp);
 // Returns the ID of the current thread.
 uint64_t scheduler_current_thread_id(void);
 
+// Returns true if the scheduler is interrupted.
+bool sched_is_interrupted(void);
+
 #endif // SCHED_H

@@ -91,4 +91,7 @@ uint64_t vmm_walk_ptes(pml4_table_t *pml4, uint64_t vaddr, uint64_t flags,
 // Display virtual memory information
 void vmm_print_info(void);
 
+// Get physical address of a virtual address
+uint64_t vmm_get_physical_address(pml4_table_t *pml4, uint64_t vaddr);
+
 #endif // VMM_H

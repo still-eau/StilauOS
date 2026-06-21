@@ -490,3 +490,12 @@ uint64_t scheduler_current_thread_id(void)
     if (!g_running) return 0;
     return g_threads[g_current].id;
 }
+
+// ---------------------------------------------------------------------------
+// sched_is_interrupted - Returns true if the scheduler is interrupted.
+// ---------------------------------------------------------------------------
+
+bool sched_is_interrupted(void)
+{
+    return !g_running;
+}

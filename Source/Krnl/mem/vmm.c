@@ -293,3 +293,13 @@ void vmm_print_info(void)
     kprintf("4 KiB pages  : %d\n", (int)pages_4k);
     kprintf("Mapped memory: %d MiB\n", (int)(mapped_bytes / 1024 / 1024));
 }
+
+uint64_t vmm_get_physical_address(pml4_table_t *pml4, uint64_t vaddr)
+{
+    // Remove flags and get only the physical address
+    // The walk function returns PTE_PRESENT if the page is mapped
+    uint64_t phys = vmm_walk_ptes(pml4, vaddr, 0, NULL, NULL, NULL, NULL);
+    
+    // Remove the flags bits (PTE_PRESENT, PTE_RW, PTE_USER, etc.)
+    return phys & PAGE_FRAME_MASK;
+}

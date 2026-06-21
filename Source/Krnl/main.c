@@ -1,8 +1,6 @@
 // main.c - Kernel entry point and interactive shell
 //
 // Called from boot_entry.asm after low-level setup.
-//
-// Comments use only standard ASCII characters.
 
 #include "cpu/cpu.h"
 #include "cpu/isr.h"
