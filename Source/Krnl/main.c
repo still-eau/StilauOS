@@ -473,11 +473,8 @@ static void cmd_kill_thread(int argc, char **argv)
         return;
     }
 
-    kprintf("Killing thread '%s'...\n", name);
     thread_exit(name);
-    {
-        kprintf("  [FAIL] Failed to kill thread.\n");
-    }
+    kprintf("  [OK] Killed thread '%s'.\n", name);
 }
 
 static void cmd_ps(int argc, char **argv)
@@ -954,10 +951,7 @@ void kernel_main(boot_info_t *boot_info)
     kprintln("Keyboard initialized.");
     mouse_init();
     kprintln("Mouse initialized.");
-    // ---------------- ENABLE INTERRUPTS ----------------
     __asm__ volatile("sti");
-    // kernel_main MUST NOT run as thread
-    // instead, kernel becomes "idle execution context"
-    for (;;)
-        __asm__ volatile("hlt");
+
+    for(;;) { __asm__ volatile("hlt"); }
 }

@@ -137,17 +137,17 @@ static int pick_next(void)
 
 static uint64_t do_switch(uint64_t current_rsp)
 {
-    // Save the current stack pointer.
-    g_threads[g_current].rsp   = current_rsp;
-    if (g_threads[g_current].state == THREAD_RUNNING)
-    {
-        g_threads[g_current].state = THREAD_READY;
+    if (g_threads[g_current].id != 0) {
+        g_threads[g_current].rsp = current_rsp;
+        if (g_threads[g_current].state == THREAD_RUNNING) {
+            g_threads[g_current].state = THREAD_READY;
+        }
     }
 
     // Pick next thread.
     int next = pick_next();
 
-    g_threads[next].state    = THREAD_RUNNING;
+    g_threads[next].state = THREAD_RUNNING;
     g_threads[next].ticks_used = 0;
     g_current = next;
     g_ticks_this_slice = 0;
@@ -413,26 +413,26 @@ void sched_init(void)
 {
     s_memset(g_threads, 0, sizeof(g_threads));
 
-    // Slot 0 = the current (boot / kernel-main) thread.
-    g_threads[0].rsp        = 0;          // Will be filled on first context switch.
-    g_threads[0].stack_base = NULL;       // Boot stack — not heap-allocated.
-    g_threads[0].stack_size = 0;
-    g_threads[0].state      = THREAD_RUNNING;
-    g_threads[0].id         = g_next_id++;
-    g_threads[0].priority   = 0;         // Highest priority — kernel main.
-    s_strncpy(g_threads[0].name, "kernel_main", SCHED_THREAD_NAME_MAX);
-
-    g_current          = 0;
+    g_current = 0; 
     g_ticks_this_slice = 0;
-    g_running          = true;
+    g_running = true;
 
     uint32_t idle_id = thread_create(idle_thread, NULL, "idle", 255);
-    if (idle_id == 0)
-    {
-        k_serial_puts("[SCHED] FATAL: failed to create idle thread.\n");
-    }
-
+    
     k_serial_puts("[SCHED] StilauSched initialized.\n");
+    // list all the active thread
+    k_serial_puts("[SCHED] Active threads:\n");
+    for (int i = 0; i < SCHED_MAX_THREADS; i++)
+    {
+        if (g_threads[i].state != THREAD_DEAD)
+        {
+            k_serial_puts("[SCHED] Thread ");
+            kprintf("0x%x", g_threads[i].id);
+            k_serial_puts(" - ");
+            k_serial_puts(g_threads[i].name);
+            k_serial_puts("\n");
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
