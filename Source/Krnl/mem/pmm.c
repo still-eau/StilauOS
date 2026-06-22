@@ -122,7 +122,7 @@ void pmm_init(boot_info_t *bi, uint64_t kernel_end)
     // 5. Réservation des zones critiques
     pmm_reserve_region(0, 0x100000); // BIOS/Legacy
     pmm_reserve_region(0x100000, kernel_end); // Kernel
-    pmm_reserve_region(bitmap_phys, bitmap_phys + bitmap_size); // Bitmap lui-même
+    pmm_reserve_region(bitmap_phys, bitmap_phys + bitmap_size); // Bitmap itself
 }
 
 // Allocate a single page

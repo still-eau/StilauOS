@@ -900,15 +900,6 @@ void shell_thread(void *arg)
 void kernel_main(boot_info_t *boot_info)
 {
     kconsole_init();
-    boot_info_t *real_bi = (boot_info_t *)0x6000;
-
-    if (real_bi->magic == 0xB007B007) {
-        kconsole_puts("[OK] Valid boot_info found at 0x6000.\n");
-        pmm_init(real_bi, (uint64_t)&bss_end);
-    } else {
-        kprintf("[FATAL] Magic at 0x6000 is 0x%X\n", (uint32_t)real_bi->magic);
-        for(;;);
-    }
     kconsole_banner("StilauOS Kernel");
     kconsole_puts("[OK] Console initialized.\n");
     if (!boot_info || boot_info->magic != BOOT_MAGIC)
@@ -919,9 +910,6 @@ void kernel_main(boot_info_t *boot_info)
     {
         kconsole_puts("[OK] Boot info validated.\n");
     }
-    kprintf("[DEBUG] boot_info recu à l'adresse: %p\n", (void*)boot_info);
-    kprintf("[DEBUG] Magic attendu: 0x%X, Recu: 0x%X\n", BOOT_MAGIC, (uint32_t)boot_info->magic);
-    ahci_init(boot_info->pci_bar5_phys_addr);
     // ---------------- CPU + MEMORY ----------------
     cpu_init();
     pmm_init(boot_info, (uint64_t)&bss_end);
@@ -944,6 +932,8 @@ void kernel_main(boot_info_t *boot_info)
     sched_init();
     kconsole_puts("[OK] Scheduler initialized.\n");
     // ---------------- FILESYSTEM ----------------
+    ahci_init(boot_info->pci_bar5_phys_addr);
+    kprintln("AHCI initialized.");
     fs_init();
     kconsole_puts("[OK] Filesystem initialized.\n");
     // ---------------- THREADS ----------------

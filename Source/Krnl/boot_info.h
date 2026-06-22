@@ -45,7 +45,7 @@ typedef struct
     uint64_t vbe_mode_info;   // VBE mode info block address (0 if none)
     uint64_t cmdline;         // kernel command line address (0 if none)
     uint64_t mmap_count;      // number of entries in mmap[]
-    uint64_t pci_bar5_phys_addr;
+    uint64_t pci_bar5_phys_addr; // BAR5 registres PCI AHCI
     boot_mmap_entry_t mmap[]; // flexible array of E820 entries
 } __attribute__((packed)) boot_info_t;
 
