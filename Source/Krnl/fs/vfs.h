@@ -1,54 +1,51 @@
-// vfs.h
-//
-// Virtual filesystem interface
+#ifndef FS_VFS_H
+#define FS_VFS_H
 
-#ifndef VFS_H
-#define VFS_H
-
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
-#include "fs.h"
 
-#define MAX_FS_NAME 16
+#include "fs_types.h"
+#include "node.h"
+#include "path.h"
+#include "file.h"
 
-typedef struct vfs_ops
-{
-    int (*open)(struct vfs_node *node, const char *mode);
-    size_t (*read)(struct vfs_node *node, uint64_t offset, size_t size, uint8_t *buffer);
-    size_t (*write)(struct vfs_node *node, uint64_t offset, size_t size, uint8_t *buffer);
-    int (*close)(struct vfs_node *node);
-} vfs_ops_t;
+// Directory entry structure for fs_readdir
+typedef struct {
+    char name[MAX_NAME_LENGTH + 1];
+    uint32_t type;
+    uint32_t size;
+} dirent_t;
 
-typedef struct vfs_node {
-    char name[MAX_FS_NAME];
-    uint64_t size;
-    uint64_t start_block;
-    uint64_t end_block;
-    void *private_data;
-    bool is_directory;
-    bool is_file;
-    vfs_ops_t *ops;
-} vfs_node_t;
+// Directory handle structure for fs_opendir/fs_readdir
+typedef struct {
+    fs_node_t *node;       // The directory node
+    fs_node_t *current;    // The current child node being iterated
+} fs_dir_t;
 
+// VFS Initialization and Device Setup
+int fs_init(void);
 
-#define MAX_MOUNT_POINTS 16
+// Global state getters/setters
+fs_node_t *fs_get_root(void);
+fs_node_t *fs_get_cwd(void);
+void fs_set_cwd(fs_node_t *node);
+fs_node_t *fs_find_node(const char *path);
 
-typedef struct mount_point
-{
-    char device_name[MAX_FS_NAME];
-    char mount_path[MAX_FS_NAME];
-    vfs_node_t *root;
-    fs_node_t *fs;
-    struct mount_point *next;
-} mount_point_t;
+// VFS File Interface
+fs_file_t *fs_fopen(const char *path, const char *mode);
+size_t fs_read(fs_file_t *file, void *buffer, size_t size);
+size_t fs_write(fs_file_t *file, const void *buffer, size_t size);
+void fs_fclose(fs_file_t *file);
 
-void vfs_init();
-void vfs_mount(const char *device_name, const char *mount_path, vfs_node_t *root, fs_node_t *fs);
-void vfs_unmount(const char *mount_path);
-vfs_node_t *vfs_find_node(const char *path);
-vfs_node_t *vfs_get_root();
-vfs_node_t *vfs_get_cwd();
-void vfs_set_cwd(vfs_node_t *node);
+// VFS Directory Interface
+fs_dir_t *fs_opendir(const char *path);
+int fs_readdir(fs_dir_t *dir, dirent_t *entry);
+void fs_closedir(fs_dir_t *dir);
 
-#endif // VFS_H
+// VFS Node Creation/Removal
+int fs_create_file(fs_node_t *parent, const char *name);
+int fs_create_dir(fs_node_t *parent, const char *name);
+int fs_remove_node(fs_node_t *node);
+
+#endif // FS_VFS_H

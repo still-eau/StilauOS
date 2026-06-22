@@ -55,100 +55,74 @@ static void pmm_reserve_region(uint64_t start_phys, uint64_t end_phys)
 // Initialize Physical Memory Manager
 void pmm_init(boot_info_t *bi, uint64_t kernel_end)
 {
-    // 1. Find the highest physical address to determine total memory size
+    // 0. VÉRIFICATION DE SÉCURITÉ CRITIQUE
+    // Si la magie est invalide, le pointeur bi est corrompu ou non initialisé
+    if (bi == NULL || bi->magic != BOOT_MAGIC) {
+        kprintf("PMM CRITICAL ERROR: Boot info invalid! Magic: %x\n", (bi ? (uint32_t)bi->magic : 0));
+        for (;;);
+    }
+
+    // 1. Détermination de la taille totale (Max adresse)
     uint64_t max_phys_addr = 0;
     for (uint64_t i = 0; i < bi->mmap_count; i++)
     {
-        boot_mmap_entry_t *e = &bi->mmap[i];
-        if (e->base + e->length > max_phys_addr)
-        {
-            max_phys_addr = e->base + e->length;
-        }
+        uint64_t entry_end = bi->mmap[i].base + bi->mmap[i].length;
+        if (entry_end > max_phys_addr) max_phys_addr = entry_end;
     }
 
     g_pmm_max_pages = max_phys_addr >> PMM_PAGE_SHIFT;
     uint64_t bitmap_size = (g_pmm_max_pages + 7) >> 3;
 
-    // 2. Find a free physical memory region to place the bitmap
+    // 2. Recherche d'un emplacement pour le bitmap
     uint64_t bitmap_phys = 0;
     for (uint64_t i = 0; i < bi->mmap_count; i++)
     {
-        boot_mmap_entry_t *e = &bi->mmap[i];
-        if (e->type != MMAP_TYPE_USABLE) continue;
+        if (bi->mmap[i].type != MMAP_TYPE_USABLE) continue;
 
-        // Align usable region base and end
-        uint64_t start = (e->base + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
-        uint64_t end   = (e->base + e->length) & ~(PMM_PAGE_SIZE - 1);
+        uint64_t start = (bi->mmap[i].base + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
+        uint64_t end   = (bi->mmap[i].base + bi->mmap[i].length) & ~(PMM_PAGE_SIZE - 1);
 
-        // Avoid overwriting the BIOS area and the kernel image
-        if (start < kernel_end)
-        {
-            start = (kernel_end + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
-        }
-
-        if (start + bitmap_size <= end)
-        {
+        if (start < kernel_end) start = (kernel_end + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
+        
+        if (start + bitmap_size <= end) {
             bitmap_phys = start;
             break;
         }
     }
 
-    if (bitmap_phys == 0)
-    {
-        k_serial_puts("PMM ERROR: Could not allocate memory for PMM bitmap!\n");
+    if (bitmap_phys == 0) {
+        kprintf("PMM ERROR: Out of memory for bitmap! Size needed: %d bytes\n", (int)bitmap_size);
         for (;;);
     }
 
-    // Set bitmap pointer (physical == virtual in identity mapping)
     g_pmm_bitmap = (uint8_t *)bitmap_phys;
+    
+    // Initialiser bitmap à 1 (utilisé)
+    for (uint64_t i = 0; i < bitmap_size; i++) g_pmm_bitmap[i] = 0xFF;
 
-    // 3. Mark all pages as USED/RESERVED initially
-    for (uint64_t i = 0; i < bitmap_size; i++)
-    {
-        g_pmm_bitmap[i] = 0xFF;
-    }
-
+    // 3 & 4. Marquage des pages
     g_pmm_total_pages = 0;
-    g_pmm_free_pages  = 0;
+    g_pmm_free_pages = 0;
 
-    // 4. Mark all usable regions as FREE
     for (uint64_t i = 0; i < bi->mmap_count; i++)
     {
-        boot_mmap_entry_t *e = &bi->mmap[i];
-        if (e->type != MMAP_TYPE_USABLE) continue;
+        if (bi->mmap[i].type != MMAP_TYPE_USABLE) continue;
+        uint64_t start = (bi->mmap[i].base + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
+        uint64_t end   = (bi->mmap[i].base + bi->mmap[i].length) & ~(PMM_PAGE_SIZE - 1);
 
-        uint64_t start = (e->base + PMM_PAGE_SIZE - 1) & ~(PMM_PAGE_SIZE - 1);
-        uint64_t end   = (e->base + e->length) & ~(PMM_PAGE_SIZE - 1);
-
-        if (start >= end) continue;
-
-        uint64_t first_page = start >> PMM_PAGE_SHIFT;
-        uint64_t last_page  = end >> PMM_PAGE_SHIFT;
-
-        for (uint64_t p = first_page; p < last_page && p < g_pmm_max_pages; p++)
-        {
-            bitmap_clear(p);
-            g_pmm_free_pages++;
-            g_pmm_total_pages++;
+        for (uint64_t p = (start >> PMM_PAGE_SHIFT); p < (end >> PMM_PAGE_SHIFT); p++) {
+            if (p < g_pmm_max_pages) {
+                bitmap_clear(p);
+                g_pmm_free_pages++;
+                g_pmm_total_pages++;
+            }
         }
     }
 
-    // 5. Reserve critical system regions
-    // A. Lower memory (BIOS, IVT, VGA, stack) [0 .. 1MB]
-    pmm_reserve_region(0, 0x100000);
-
-    // B. Kernel image [1MB .. kernel_end]
-    pmm_reserve_region(0x100000, kernel_end);
-
-    // C. PMM Bitmap itself [bitmap_phys .. bitmap_phys + bitmap_size]
-    pmm_reserve_region(bitmap_phys, bitmap_phys + bitmap_size);
-
-    // Set initial allocation hint to page right after the bitmap
-    g_pmm_alloc_hint = (bitmap_phys + bitmap_size + PMM_PAGE_SIZE - 1) >> PMM_PAGE_SHIFT;
-    if (g_pmm_alloc_hint >= g_pmm_max_pages)
-    {
-        g_pmm_alloc_hint = 0;
-    }
+    // 5. Réservation des zones critiques
+    pmm_reserve_region(0, 0x100000); // BIOS/Legacy
+    pmm_reserve_region(0x100000, kernel_end); // Kernel
+    pmm_reserve_region(bitmap_phys, bitmap_phys + bitmap_size); // Bitmap lui-même
 }
 
 // Allocate a single page

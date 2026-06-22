@@ -143,9 +143,17 @@ function Build-OS {
         "$SRCROOT\Drivers\pit.c"
         "$SRCROOT\Drivers\vga.c"
         "$SRCROOT\Drivers\keyboard.c"
+        "$SRCROOT\Drivers\ahci.c"
         "$SRCROOT\Drivers\console.c"
         "$SRCROOT\Drivers\mouse.c"
-        "$SRCROOT\Krnl\fs\fs.c"
+        "$SRCROOT\Krnl\fs\node.c"
+        "$SRCROOT\Krnl\fs\path.c"
+        "$SRCROOT\Krnl\fs\file.c"
+        "$SRCROOT\Krnl\fs\vfs.c"
+        "$SRCROOT\Krnl\fs\stilaufs\alloc.c"
+        "$SRCROOT\Krnl\fs\stilaufs\inode.c"
+        "$SRCROOT\Krnl\fs\stilaufs\super.c"
+        "$SRCROOT\Krnl\fs\stilaufs\dir.c"
         "$SRCROOT\Krnl\task\sched.c"
         "$SRCROOT\Krnl\main.c"
     )
@@ -184,9 +192,17 @@ function Build-OS {
         "$BUILD\pit.o"
         "$BUILD\vga.o"
         "$BUILD\keyboard.o"
+        "$BUILD\ahci.o"
         "$BUILD\console.o"
         "$BUILD\mouse.o"
-        "$BUILD\fs.o"
+        "$BUILD\node.o"
+        "$BUILD\path.o"
+        "$BUILD\file.o"
+        "$BUILD\vfs.o"
+        "$BUILD\alloc.o"
+        "$BUILD\inode.o"
+        "$BUILD\super.o"
+        "$BUILD\dir.o"
         "$BUILD\sched.o"
         "$BUILD\main.o"
     )
@@ -275,12 +291,14 @@ function Run-OS {
     Info "Launching QEMU"
     
     & $QEMU `
-    -drive "format=raw,file=$OS_IMG" `
-    -m 64M `
-    -display sdl `
+    -machine q35 `
+    -m 128M `
     -serial stdio `
     -no-reboot `
-    -no-shutdown
+    -no-shutdown `
+    -drive "id=disk0,format=raw,file=$OS_IMG,if=none" `
+    -device ahci,id=ahci0 `
+    -device ide-hd,bus=ahci0.0,drive=disk0
 }
 
 # ------------------------------------------------------------------

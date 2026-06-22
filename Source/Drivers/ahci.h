@@ -115,7 +115,7 @@ typedef struct
 }ahci_cmd_header_t;
 
 // Initialization and scan interface
-ahci_status_t ahci_init(void);
+ahci_status_t ahci_init(uint64_t pci_bar5_phys_addr);
 size_t        ahci_get_device_count(void);
 ahci_device_t* ahci_get_device(uint8_t port_idx);
 

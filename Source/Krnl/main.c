@@ -8,15 +8,17 @@
 #include "mem/vmm.h"
 #include "mem/krnl_mm.h"
 #include "mem/vma.h"
-#include "fs/fs.h"
 #include "task/sched.h"
 #include "boot_info.h"
 #include "../Drivers/pic.h"
 #include "../Drivers/pit.h"
 #include "../Drivers/keyboard.h"
 #include "../Drivers/console.h"
+#include "../Drivers/ahci.h"
 #include "../Drivers/vga.h"
 #include "../Drivers/mouse.h"
+#include "fs/vfs.h"
+#include "fs/fs_types.h"
 
 // Defined by the linker script (link.ld)
 extern char bss_end;
@@ -565,7 +567,7 @@ static fs_node_t *find_parent_and_name(const char *path, char *name_out)
     if (last_slash == -1)
     {
         int name_len = 0;
-        while (path[name_len] != '\0' && name_len < FS_NAME_MAX - 1)
+        while (path[name_len] != '\0' && name_len < MAX_NAME_LENGTH - 1)
         {
             name_out[name_len] = path[name_len];
             name_len++;
@@ -576,7 +578,7 @@ static fs_node_t *find_parent_and_name(const char *path, char *name_out)
     else if (last_slash == 0)
     {
         int name_len = 0;
-        while (path[1 + name_len] != '\0' && name_len < FS_NAME_MAX - 1)
+        while (path[1 + name_len] != '\0' && name_len < MAX_NAME_LENGTH - 1)
         {
             name_out[name_len] = path[1 + name_len];
             name_len++;
@@ -586,9 +588,9 @@ static fs_node_t *find_parent_and_name(const char *path, char *name_out)
     }
     else
     {
-        char parent_path[FS_PATH_MAX];
+        char parent_path[MAX_PATH_LENGTH];
         int i = 0;
-        while (i < last_slash && i < FS_PATH_MAX - 1)
+        while (i < last_slash && i < MAX_PATH_LENGTH - 1)
         {
             parent_path[i] = path[i];
             i++;
@@ -596,7 +598,7 @@ static fs_node_t *find_parent_and_name(const char *path, char *name_out)
         parent_path[i] = '\0';
 
         int name_len = 0;
-        while (path[last_slash + 1 + name_len] != '\0' && name_len < FS_NAME_MAX - 1)
+        while (path[last_slash + 1 + name_len] != '\0' && name_len < MAX_NAME_LENGTH - 1)
         {
             name_out[name_len] = path[last_slash + 1 + name_len];
             name_len++;
@@ -689,7 +691,7 @@ static void cmd_mkdir(int argc, char **argv)
         return;
     }
 
-    char name[FS_NAME_MAX];
+    char name[MAX_NAME_LENGTH];
     fs_node_t *parent = find_parent_and_name(argv[1], name);
     if (!parent)
     {
@@ -711,7 +713,7 @@ static void cmd_touch(int argc, char **argv)
         return;
     }
 
-    char name[FS_NAME_MAX];
+    char name[MAX_NAME_LENGTH];
     fs_node_t *parent = find_parent_and_name(argv[1], name);
     if (!parent)
     {
@@ -898,6 +900,15 @@ void shell_thread(void *arg)
 void kernel_main(boot_info_t *boot_info)
 {
     kconsole_init();
+    boot_info_t *real_bi = (boot_info_t *)0x6000;
+
+    if (real_bi->magic == 0xB007B007) {
+        kconsole_puts("[OK] Valid boot_info found at 0x6000.\n");
+        pmm_init(real_bi, (uint64_t)&bss_end);
+    } else {
+        kprintf("[FATAL] Magic at 0x6000 is 0x%X\n", (uint32_t)real_bi->magic);
+        for(;;);
+    }
     kconsole_banner("StilauOS Kernel");
     kconsole_puts("[OK] Console initialized.\n");
     if (!boot_info || boot_info->magic != BOOT_MAGIC)
@@ -908,6 +919,9 @@ void kernel_main(boot_info_t *boot_info)
     {
         kconsole_puts("[OK] Boot info validated.\n");
     }
+    kprintf("[DEBUG] boot_info recu à l'adresse: %p\n", (void*)boot_info);
+    kprintf("[DEBUG] Magic attendu: 0x%X, Recu: 0x%X\n", BOOT_MAGIC, (uint32_t)boot_info->magic);
+    ahci_init(boot_info->pci_bar5_phys_addr);
     // ---------------- CPU + MEMORY ----------------
     cpu_init();
     pmm_init(boot_info, (uint64_t)&bss_end);
@@ -929,8 +943,9 @@ void kernel_main(boot_info_t *boot_info)
     kconsole_puts("[..] Initializing scheduler...\n");
     sched_init();
     kconsole_puts("[OK] Scheduler initialized.\n");
+    // ---------------- FILESYSTEM ----------------
     fs_init();
-    kprintln("StilauFS initialized.");
+    kconsole_puts("[OK] Filesystem initialized.\n");
     // ---------------- THREADS ----------------
     extern void shell_thread(void *arg);
     uint32_t shell_id = thread_create(shell_thread, NULL, "shell", 1);

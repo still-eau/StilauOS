@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 // global static variables for the driver
-static dma_buffer_t*     controller_table_buffer = NULL;
 static volatile uint32_t* abar_phys_reg         = NULL;
 static volatile uint32_t* abar_virt_reg         = NULL;
 static ahci_device_t     devices[32];
@@ -49,7 +48,7 @@ void* ahci_dma_alloc(size_t size, uint64_t* physical_addr)
     if (phys == NULL) return NULL;
 
     // map in virtual memory
-    void* virt = vmm_map_page(vmm_get_kernel_pml4(), (uint64_t)phys, num_pages * 4096, PTE_PRESENT | PTE_RW);
+    pt_entry_t* virt = vmm_map_page(vmm_get_kernel_pml4(), (uint64_t)phys, num_pages * 4096, PTE_PRESENT | PTE_RW);
     
     if (virt == NULL) {
         pmm_free_pages(phys, num_pages);
@@ -57,7 +56,7 @@ void* ahci_dma_alloc(size_t size, uint64_t* physical_addr)
     }
 
     *physical_addr = (uint64_t)phys;
-    return virt;
+    return (void*)virt;
 }
 
 void ahci_dma_free(void* addr, size_t size)
@@ -116,12 +115,8 @@ static bool is_ahci_controller(uint16_t vendor_id, uint16_t device_id)
 }
 
 // Initialize AHCI controller
-static bool ahci_init_controller(uint16_t vendor_id, uint16_t device_id)
+static bool ahci_init_controller(uint64_t pci_bar5_phys_addr)
 {
-    // Check if controller is an AHCI controller
-    if (!is_ahci_controller(vendor_id, device_id)) {
-        return false;
-    }
 
     // Reset controller
     reset_controller();
@@ -141,7 +136,7 @@ size_t ahci_get_device_count(void)
 // Get device AHCI
 ahci_device_t *ahci_get_device(uint8_t port_index)
 {
-    for (size_t i; i < device_count; i++)
+    for (size_t i = 0; i < device_count; i++)
     {
         if (devices[i].port_index == port_index)
         {
@@ -262,5 +257,18 @@ ahci_status_t ahci_write(ahci_device_t* dev, uint64_t lba, uint32_t count, const
     // clean up
     ahci_dma_free(cmd_table, sizeof(ahci_cmd_table_t));
     
+    return AHCI_SUCCESS;
+}
+
+ahci_status_t ahci_init(uint64_t pci_bar5_phys_addr)
+{
+    abar_phys_reg = (volatile uint32_t *)pci_bar5_phys_addr;
+    abar_virt_reg = (volatile uint32_t *)vmm_map_page(vmm_get_kernel_pml4(), (uint64_t)abar_phys_reg, 4096, PTE_PRESENT | PTE_RW);
+    if (abar_virt_reg == NULL)
+    {
+        return AHCI_ERR_DMA_FAILURE;
+    }
+    
+    ahci_init_controller(pci_bar5_phys_addr);
     return AHCI_SUCCESS;
 }

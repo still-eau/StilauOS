@@ -416,8 +416,6 @@ void sched_init(void)
     g_current = 0; 
     g_ticks_this_slice = 0;
     g_running = true;
-
-    uint32_t idle_id = thread_create(idle_thread, NULL, "idle", 255);
     
     k_serial_puts("[SCHED] StilauSched initialized.\n");
     // list all the active thread
